@@ -11,7 +11,7 @@ from onboarding import run_onboarding
 from supervisor import classify_intent_rule, classify_intent
 from agents.paper_parser import build_parser_graph
 from agents.paper_qa import run_qa_loop
-from agents.cross_paper import run_compare_loop
+from agents.cross_paper import run_compare_loop, select_compare_papers
 from agents.knowledge_mgr import manage_knowledge_loop, show_paper_list
 
 MENU = """
@@ -133,9 +133,14 @@ async def main():
         elif choice == "2":
             await continue_reading()
         elif choice == "3":
-            papers = list_papers()
-            paper_id = papers[0]["paper_id"] if papers else ""
-            await run_compare_loop(paper_id)
+            papers = list_papers(limit=30)
+            selection = select_compare_papers(papers)
+            if selection:
+                current_paper_id, candidate_paper_ids = selection
+                await run_compare_loop(
+                    current_paper_id,
+                    candidate_paper_ids,
+                )
         elif choice == "4":
             manage_knowledge_loop()
         elif choice == "5":

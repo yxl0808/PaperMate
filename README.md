@@ -68,6 +68,8 @@ python main.py
 我实现了基于已导入论文内容进行检索问答的命令行流程。下图展示了我使用 PaperMate 阅读并询问 CLIP 论文的界面。
 
 ![PaperMate 论文问答界面](docs/images/papermate-cli-qa.png)
+![PaperMate 跨论文选择界面](docs/images/papermate-cli-compare-selection.png)
+![PaperMate 知识库管理界面](docs/images/papermate-cli-knowledge-management.png)
 
 ## 数据位置
 

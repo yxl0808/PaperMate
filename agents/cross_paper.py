@@ -1,6 +1,6 @@
 """Cross-paper comparison agent."""
 import asyncio
-from typing import TypedDict, Annotated, Sequence
+from typing import TypedDict, Annotated, Sequence, Callable
 from langgraph.graph import StateGraph, END
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from langgraph.graph.message import add_messages
@@ -14,9 +14,23 @@ from core.memory import list_papers, get_paper
 class CompareState(TypedDict):
     messages: Annotated[Sequence[BaseMessage], add_messages]
     current_paper_id: str
+    candidate_paper_ids: list[str] | None
 
 
-def _pick_candidates(current_id: str, limit: int = 3) -> list[dict]:
+def _pick_candidates(
+    current_id: str,
+    limit: int = 3,
+    candidate_paper_ids: list[str] | None = None,
+) -> list[dict]:
+    if candidate_paper_ids is not None:
+        candidates = []
+        seen = set()
+        for paper_id in candidate_paper_ids:
+            if paper_id and paper_id != current_id and paper_id not in seen:
+                candidates.append({"paper_id": paper_id})
+                seen.add(paper_id)
+        return candidates
+
     all_papers = list_papers(limit=20)
     return [p for p in all_papers if p["paper_id"] != current_id][:limit]
 
@@ -24,9 +38,13 @@ def _pick_candidates(current_id: str, limit: int = 3) -> list[dict]:
 async def compare_node(state: CompareState) -> CompareState:
     user_msg = state["messages"][-1].content if state["messages"] else ""
     current_id = state.get("current_paper_id", "")
+    candidate_paper_ids = state.get("candidate_paper_ids")
 
     current_paper = get_paper(current_id)
-    candidates = _pick_candidates(current_id)
+    candidates = _pick_candidates(
+        current_id,
+        candidate_paper_ids=candidate_paper_ids,
+    )
 
     # Search current paper
     current_chunks = search(user_msg, paper_id=current_id, top_k=3)
@@ -69,7 +87,68 @@ def build_compare_graph() -> StateGraph:
     return graph.compile()
 
 
-async def run_compare_loop(current_paper_id: str = ""):
+def _resolve_paper_choice(choice: str, papers: list[dict]) -> str | None:
+    if choice.isdigit():
+        index = int(choice) - 1
+        if 0 <= index < len(papers):
+            return papers[index]["paper_id"]
+        return None
+
+    for paper in papers:
+        if paper["paper_id"] == choice:
+            return choice
+    return None
+
+
+def select_compare_papers(
+    papers: list[dict],
+    input_fn: Callable[[str], str] = input,
+) -> tuple[str, list[str]] | None:
+    """Interactively select the current paper and comparison candidates."""
+    if len(papers) < 2:
+        print("至少需要导入 2 篇论文才能进行对比。")
+        return None
+
+    print("已导入论文：")
+    for index, paper in enumerate(papers, start=1):
+        print(f"  [{index}] {paper['title']} (ID: {paper['paper_id']})")
+
+    current_choice = input_fn("当前论文编号或 paper_id (输入 0 取消): ").strip()
+    if current_choice == "0":
+        return None
+    current_id = _resolve_paper_choice(current_choice, papers)
+    if current_id is None:
+        print("当前论文选择无效。")
+        return None
+
+    candidate_choice = input_fn(
+        "候选论文编号或 paper_id（多个用逗号分隔，输入 0 取消）: "
+    ).strip()
+    if candidate_choice == "0":
+        return None
+
+    candidate_ids = []
+    seen = set()
+    for value in candidate_choice.split(","):
+        value = value.strip()
+        candidate_id = _resolve_paper_choice(value, papers)
+        if candidate_id is None:
+            print(f"候选论文选择无效: {value}")
+            return None
+        if candidate_id != current_id and candidate_id not in seen:
+            candidate_ids.append(candidate_id)
+            seen.add(candidate_id)
+
+    if not candidate_ids:
+        print("至少选择一篇不同于当前论文的候选论文。")
+        return None
+    return current_id, candidate_ids
+
+
+async def run_compare_loop(
+    current_paper_id: str = "",
+    candidate_paper_ids: list[str] | None = None,
+):
     """Interactive cross-paper comparison loop."""
     current_paper = get_paper(current_paper_id) if current_paper_id else None
     title = current_paper["title"] if current_paper else "论文库"
@@ -96,6 +175,7 @@ async def run_compare_loop(current_paper_id: str = ""):
             break
 
         state = {"messages": [HumanMessage(content=user_input)],
-                 "current_paper_id": current_paper_id}
+                 "current_paper_id": current_paper_id,
+                 "candidate_paper_ids": candidate_paper_ids}
         result = await graph.ainvoke(state)
         print()
