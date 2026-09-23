@@ -1,0 +1,13 @@
+.env
+.venv/
+__pycache__/
+*.py[cod]
+
+.idea/
+.vscode/
+
+data/chroma/*
+!data/chroma/.gitkeep
+data/learner.db
+data/papers/*
+!data/papers/.gitkeep
