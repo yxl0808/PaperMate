@@ -63,6 +63,12 @@ python main.py
 
 首次使用时，从主菜单选择“导入新论文”，输入 PDF 文件路径即可开始解析。之后可进入论文问答、跨论文搜索或知识库管理。问答过程中输入 `/menu` 返回主菜单，输入 `/note` 记录笔记。
 
+## 运行效果
+
+我实现了基于已导入论文内容进行检索问答的命令行流程。下图展示了我使用 PaperMate 阅读并询问 CLIP 论文的界面。
+
+![PaperMate 论文问答界面](docs/images/papermate-cli-qa.png)
+
 ## 数据位置
 
 - `data/learner.db`：论文元数据、阅读记录和笔记。
