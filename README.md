@@ -18,7 +18,7 @@ Python、LangGraph、LangChain、DeepSeek、Docling、Sentence Transformers、Ch
 
 - Python 3.10 或更高版本（推荐 Python 3.11）。
 - DeepSeek API Key。
-- 首次运行时，Sentence Transformers 会下载 `all-MiniLM-L6-v2` 嵌入模型；请确保可以访问模型下载源并预留磁盘空间。
+- 首次运行时，Sentence Transformers 会下载 `BAAI/bge-small-zh-v1.5` 嵌入模型；请确保可以访问模型下载源并预留磁盘空间。
 
 ## 安装与配置
 
